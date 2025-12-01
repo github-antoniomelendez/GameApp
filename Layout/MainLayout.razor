@@ -1,0 +1,26 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4 d-flex align-items-center justify-content-between">
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+
+            <!-- Dark mode toggle in the top-right -->
+            <div class="top-controls d-flex align-items-center">
+                <DarkModeToggle />
+            </div>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+
+
+

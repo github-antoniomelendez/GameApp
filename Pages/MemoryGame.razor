@@ -1,0 +1,163 @@
+@page "/memorygame"
+
+<h3 class="text-center mt-3">Memory Game</h3>
+
+<div class="text-center mb-3">
+    <label for="difficulty">Difficulty:</label>
+    <select id="difficulty" @bind="SelectedDifficulty" class="form-select d-inline w-auto ms-2">
+        @foreach (var level in DifficultyLevels.Keys)
+        {
+            <option value="@level">@level</option>
+        }
+    </select>
+
+    <button class="btn btn-primary ml-3" @onclick="RestartGame">Reset Game</button>
+</div>
+
+<div class="memory-grid">
+    @foreach (var card in Cards)
+    {
+        <div class="memory-card @(card.IsFlipped ? "flipped" : "") @(card.IsMatched ? "matched" : "")"
+            @onclick="() => FlipCard(card)">
+            <div class="card-front">@((MarkupString)card.Content)</div>
+            <div class="card-back">?</div>
+        </div>
+    }
+</div>
+
+<p class="mt-3 text-center">Attempts: @Attempts</p>
+
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="main">
+        @Body
+    </div>
+
+    <Footer />
+</div>
+
+@code {
+    private List<Card> Cards = new();
+    private Card? firstFlipped;
+    private Card? secondFlipped;
+    private int Attempts = 0;
+    private bool busy = false; // prevents rapid clicks
+
+    private Dictionary<string, int> DifficultyLevels = new()
+{
+{ "Easy", 4 },
+{ "Medium", 8 },
+{ "Hard", 12 }
+};
+
+    // FontAwesome icons (HTML strings)
+    private List<string> Icons = new()
+{
+"<i class='fa-solid fa-cat'></i>",
+"<i class='fa-solid fa-dog'></i>",
+"<i class='fa-solid fa-hippo'></i>",
+"<i class='fa-solid fa-fish'></i>",
+"<i class='fa-solid fa-kiwi-bird'></i>",
+"<i class='fa-solid fa-dragon'></i>",
+"<i class='fa-solid fa-frog'></i>",
+"<i class='fa-solid fa-otter'></i>",
+"<i class='fa-solid fa-spider'></i>",
+"<i class='fa-solid fa-ghost'></i>",
+"<i class='fa-solid fa-apple-whole'></i>",
+"<i class='fa-solid fa-leaf'></i>"
+};
+
+    private string selectedDifficulty = "Medium";
+    private string SelectedDifficulty
+    {
+        get => selectedDifficulty;
+        set
+        {
+            if (selectedDifficulty != value)
+            {
+                selectedDifficulty = value;
+                RestartGame(); // restart when difficulty changes
+            }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        InitializeCards();
+    }
+
+    private void InitializeCards()
+    {
+        firstFlipped = null;
+        secondFlipped = null;
+        Attempts = 0;
+        busy = false;
+
+        int pairs = DifficultyLevels[SelectedDifficulty];
+
+        // pick the first N icons
+        var selectedIcons = Icons.Take(pairs).ToList();
+
+        // create paired list and shuffle
+        var paired = selectedIcons.Concat(selectedIcons).OrderBy(_ => Guid.NewGuid()).ToList();
+
+        Cards = paired.Select(c => new Card(c)).ToList();
+    }
+
+    private async Task FlipCard(Card card)
+    {
+        if (card.IsFlipped || card.IsMatched || busy)
+            return;
+
+        card.IsFlipped = true;
+
+        if (firstFlipped == null)
+        {
+            firstFlipped = card;
+        }
+        else
+        {
+            secondFlipped = card;
+            Attempts++;
+            busy = true;
+
+            var first = firstFlipped;
+            var second = secondFlipped;
+
+            if (first.Content == second.Content)
+            {
+                first.IsMatched = true;
+                second.IsMatched = true;
+                busy = false;
+            }
+            else
+            {
+                await Task.Delay(1000);
+                first.IsFlipped = false;
+                second.IsFlipped = false;
+                busy = false;
+            }
+
+            firstFlipped = null;
+            secondFlipped = null;
+        }
+    }
+
+    private void RestartGame()
+    {
+        InitializeCards();
+    }
+
+    public class Card
+    {
+        public Card(string content)
+        {
+            Content = content;
+        }
+
+        public string Content { get; }
+        public bool IsFlipped { get; set; } = false;
+        public bool IsMatched { get; set; } = false;
+    }
+}

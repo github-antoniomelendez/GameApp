@@ -1,0 +1,889 @@
+@page "/chess"
+@using System.Threading.Tasks
+@using System.Linq
+@using System.Collections.Generic
+
+<style>
+    .chess-controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+    }
+
+    .chess-reset-button,
+    .cpu-toggle,
+    .cpu-side {
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .turn-indicator {
+        font-weight: 600;
+    }
+
+    .chess-board {
+        display: inline-block;
+        border: 2px solid #222;
+    }
+
+    .chess-row {
+        display: flex;
+    }
+
+    .chess-square {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .chess-square.light {
+        background: #edeef1;
+    }
+
+    .chess-square.dark {
+        background: #7ba2ef;
+    }
+
+    .chess-square.selected {
+        outline: 2px solid black;
+        box-sizing: border-box;
+    }
+
+    .promotion-modal {
+        position: fixed;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.4);
+    }
+
+    .promotion-box {
+        background: white;
+        padding: 16px;
+        border-radius: 8px;
+        min-width: 240px;
+        text-align: center;
+    }
+
+    .promotion-row {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        margin-top: 8px;
+    }
+
+    .promotion-button {
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        border: 1px solid #ccc;
+    }
+
+    .status {
+        margin-top: 12px;
+        text-align: center;
+        font-weight: 600;
+    }
+</style>
+
+<h3 class="text-center mt-3">Chess Game</h3>
+
+<div class="chess-controls">
+    <button class="btn btn-primary ml-3" @onclick="ResetGame">Reset Game</button>
+
+    <label><input type="checkbox" @bind="PlayVsCpu" /> Play vs CPU</label>
+
+    <label class="cpu-side">CPU side:
+        <select @bind="CpuPlaysColor" disabled="@(PlayVsCpu == false)">
+            <option value="Black">Black</option>
+            <option value="White">White</option>
+        </select>
+    </label>
+
+    <span class="turn-indicator">Current Turn: @CurrentTurn</span>
+</div>
+
+<div class="text-center">
+<div class="chess-board" aria-hidden="false">
+    @for (int row = 0; row < 8; row++)
+    {
+        <div class="chess-row">
+            @for (int col = 0; col < 8; col++)
+            {
+                var r = row; var c = col;
+                var square = ChessBoard[r, c];
+                <div class="chess-square @(GetSquareColor(r, c)) @(IsSelected(r, c) ? "selected" : "")"
+                    @onclick="() => OnSquareClickAsync(r, c)">
+                    @if (square != null)
+                    {
+                        <span class="chess-piece" title="@($"{square.Color} {square.Type}")">@square.Symbol</span>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>
+</div>
+
+@if (IsGameOver)
+{
+    <h4 class="text-center mt-3">@GameOverMessage</h4>
+}
+else if (IsCpuThinking)
+{
+    <div class="status">CPU is thinking...</div>
+}
+
+@if (ShowPromotionChooser)
+{
+    <div class="promotion-modal">
+        <div class="promotion-box">
+            <div>Promote pawn to:</div>
+            <div class="promotion-row">
+                <button class="promotion-button" @onclick="() => ChoosePromotion(PieceType.Queen)">♕ Queen</button>
+                <button class="promotion-button" @onclick="() => ChoosePromotion(PieceType.Rook)">♖ Rook</button>
+                <button class="promotion-button" @onclick="() => ChoosePromotion(PieceType.Bishop)">♗ Bishop</button>
+                <button class="promotion-button" @onclick="() => ChoosePromotion(PieceType.Knight)">♘ Knight</button>
+            </div>
+        </div>
+    </div>
+}
+
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="main">
+        @Body
+    </div>
+
+    <Footer />
+</div>
+
+@code {
+    // Board and game state
+    private ChessPiece?[,] ChessBoard = new ChessPiece?[8, 8];
+    private string CurrentTurn = "White";
+    private (int row, int col)? SelectedSquare = null;
+    private bool IsGameOver = false;
+    private string GameOverMessage = "";
+    private bool IsCpuThinking = false;
+
+    // Promotion UI state
+    private bool ShowPromotionChooser = false;
+    private (int row, int col)? PendingPromotionSquareFrom;
+    private (int row, int col)? PendingPromotionSquareTo;
+    private string PendingPromotionColor = "White";
+
+    // CPU settings
+    private bool PlayVsCpu { get; set; } = true;
+    private string CpuPlaysColor { get; set; } = "Black";
+    private int AiSearchDepth { get; set; } = 3; // tune this: 2-4 reasonable for small CPU
+
+    protected override void OnInitialized()
+    {
+        ResetGame();
+    }
+
+    void ResetGame()
+    {
+        ChessBoard = new ChessPiece?[8, 8];
+        CurrentTurn = "White";
+        SelectedSquare = null;
+        IsGameOver = false;
+        GameOverMessage = "";
+        IsCpuThinking = false;
+        ShowPromotionChooser = false;
+        PendingPromotionSquareFrom = null;
+        PendingPromotionSquareTo = null;
+
+        // Pawns
+        for (int col = 0; col < 8; col++)
+        {
+            ChessBoard[1, col] = new ChessPiece(PieceType.Pawn, "Black", "♟");
+            ChessBoard[6, col] = new ChessPiece(PieceType.Pawn, "White", "♙");
+        }
+
+        // Rooks
+        ChessBoard[0, 0] = ChessBoard[0, 7] = new ChessPiece(PieceType.Rook, "Black", "♜");
+        ChessBoard[7, 0] = ChessBoard[7, 7] = new ChessPiece(PieceType.Rook, "White", "♖");
+
+        // Knights
+        ChessBoard[0, 1] = ChessBoard[0, 6] = new ChessPiece(PieceType.Knight, "Black", "♞");
+        ChessBoard[7, 1] = ChessBoard[7, 6] = new ChessPiece(PieceType.Knight, "White", "♘");
+
+        // Bishops
+        ChessBoard[0, 2] = ChessBoard[0, 5] = new ChessPiece(PieceType.Bishop, "Black", "♝");
+        ChessBoard[7, 2] = ChessBoard[7, 5] = new ChessPiece(PieceType.Bishop, "White", "♗");
+
+        // Queens
+        ChessBoard[0, 3] = new ChessPiece(PieceType.Queen, "Black", "♛");
+        ChessBoard[7, 3] = new ChessPiece(PieceType.Queen, "White", "♕");
+
+        // Kings
+        ChessBoard[0, 4] = new ChessPiece(PieceType.King, "Black", "♚");
+        ChessBoard[7, 4] = new ChessPiece(PieceType.King, "White", "♔");
+
+        // If CPU should start as White, trigger AI move
+        if (PlayVsCpu && CpuPlaysColor == "White")
+        {
+            _ = Task.Run(async () => await MaybeDoCpuMoveAsync());
+        }
+    }
+
+    // Click handler (async because CPU move may follow)
+    private async Task OnSquareClickAsync(int row, int col)
+    {
+        if (IsGameOver || IsCpuThinking) return;
+
+        // If it's CPU's turn, ignore clicks
+        if (PlayVsCpu && CpuPlaysColor == CurrentTurn) return;
+
+        var square = ChessBoard[row, col];
+
+        if (SelectedSquare == null)
+        {
+            if (square != null && square.Color == CurrentTurn)
+            {
+                SelectedSquare = (row, col);
+            }
+        }
+        else
+        {
+            var src = SelectedSquare.Value;
+
+            if (IsValidMove(src.row, src.col, row, col))
+            {
+                // Prevent moves that leave own king in check
+                if (WouldBeInCheckAfterMove(src.row, src.col, row, col, CurrentTurn))
+                {
+                    SelectedSquare = null;
+                    return;
+                }
+
+                // If this move will cause a pawn promotion by the *player*, show chooser
+                var moving = ChessBoard[src.row, src.col];
+                if (moving != null && moving.Type == PieceType.Pawn &&
+                ((moving.Color == "White" && row == 0) || (moving.Color == "Black" && row == 7)))
+                {
+                    // Save pending move and show promotion chooser
+                    PendingPromotionSquareFrom = src;
+                    PendingPromotionSquareTo = (row, col);
+                    PendingPromotionColor = moving.Color;
+                    ShowPromotionChooser = true;
+                    SelectedSquare = null;
+                    return;
+                }
+
+                // Normal move -> use MakeMove
+                MakeMove(src.row, src.col, row, col);
+                SelectedSquare = null;
+
+                // Check if opposing king is captured (shouldn't happen in proper play, but keep)
+                if (!IsKingAlive(CurrentTurn == "White" ? "Black" : "White"))
+                {
+                    IsGameOver = true;
+                    GameOverMessage = $"{CurrentTurn} Wins!";
+                    return;
+                }
+
+                // Switch turn
+                CurrentTurn = CurrentTurn == "White" ? "Black" : "White";
+
+                // After switching turns, see if game ended (checkmate/stalemate) and maybe CPU
+                await PostMoveChecksAndMaybeCpuAsync();
+            }
+            else
+            {
+                // Invalid move or selecting new own piece
+                if (square != null && square.Color == CurrentTurn)
+                {
+                    SelectedSquare = (row, col);
+                }
+                else
+                {
+                    SelectedSquare = null;
+                }
+            }
+        }
+    }
+
+    // Called after a move to check for game end and to let CPU move if needed
+    private async Task PostMoveChecksAndMaybeCpuAsync()
+    {
+        bool toMoveInCheck = IsInCheck(CurrentTurn);
+        bool toMoveHasMoves = HasAnyLegalMoves(CurrentTurn);
+
+        if (!toMoveHasMoves)
+        {
+            IsGameOver = true;
+            if (toMoveInCheck)
+            {
+                // Checkmate -> previous player wins
+                var prev = CurrentTurn == "White" ? "Black" : "White";
+                GameOverMessage = $"Checkmate — {prev} wins!";
+            }
+            else
+            {
+                GameOverMessage = "Draw (Stalemate)";
+            }
+            return;
+        }
+
+        // If playing vs CPU and it's CPU's turn, ask it to move
+        if (PlayVsCpu && CpuPlaysColor == CurrentTurn)
+        {
+            await MaybeDoCpuMoveAsync();
+        }
+    }
+
+    // CPU orchestration
+    private async Task MaybeDoCpuMoveAsync()
+    {
+        IsCpuThinking = true;
+        StateHasChanged();
+
+        // small delay for UX (optional)
+        await Task.Delay(250);
+
+        var best = GetBestMoveForColor(CurrentTurn, AiSearchDepth);
+        if (best.HasValue)
+        {
+            var (sr, sc, tr, tc) = best.Value;
+
+            // If promotion for AI, auto-promote to queen
+            var moving = ChessBoard[sr, sc];
+            bool isPromotion = moving != null && moving.Type == PieceType.Pawn &&
+            ((moving.Color == "White" && tr == 0) || (moving.Color == "Black" && tr == 7));
+
+            MakeMove(sr, sc, tr, tc, promoteTo: isPromotion ? PieceType.Queen : (PieceType?)null);
+        }
+
+        // switch turn
+        CurrentTurn = CurrentTurn == "White" ? "Black" : "White";
+        IsCpuThinking = false;
+
+        // Check end conditions after CPU move
+        bool toMoveInCheck = IsInCheck(CurrentTurn);
+        bool toMoveHasMoves = HasAnyLegalMoves(CurrentTurn);
+
+        if (!toMoveHasMoves)
+        {
+            IsGameOver = true;
+            if (toMoveInCheck)
+            {
+                var prev = CurrentTurn == "White" ? "Black" : "White";
+                GameOverMessage = $"Checkmate — {prev} wins!";
+            }
+            else
+            {
+                GameOverMessage = "Draw (Stalemate)";
+            }
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // Promotion chooser callback
+    private async Task ChoosePromotion(PieceType chosen)
+    {
+        ShowPromotionChooser = false;
+
+        if (PendingPromotionSquareFrom.HasValue && PendingPromotionSquareTo.HasValue)
+        {
+            var src = PendingPromotionSquareFrom.Value;
+            var dst = PendingPromotionSquareTo.Value;
+            MakeMove(src.row, src.col, dst.row, dst.col, promoteTo: chosen);
+
+            // Clear pending
+            PendingPromotionSquareFrom = null;
+            PendingPromotionSquareTo = null;
+
+            // After promotion move, check for game end and possibly let CPU move
+            CurrentTurn = CurrentTurn == "White" ? "Black" : "White";
+            await PostMoveChecksAndMaybeCpuAsync();
+        }
+    }
+
+    // High-level move performer with optional promotion choice (used by both user and CPU)
+    private void MakeMove(int srcRow, int srcCol, int destRow, int destCol, PieceType? promoteTo = null)
+    {
+        var piece = ChessBoard[srcRow, srcCol];
+        ChessPiece? originalMoved = piece == null ? null : new ChessPiece(piece.Type, piece.Color, piece.Symbol);
+        ChessPiece? captured = ChessBoard[destRow, destCol];
+
+        ChessBoard[destRow, destCol] = piece;
+        ChessBoard[srcRow, srcCol] = null;
+
+        // Promotion handling
+        if (piece != null && piece.Type == PieceType.Pawn)
+        {
+            if ((piece.Color == "White" && destRow == 0) || (piece.Color == "Black" && destRow == 7))
+            {
+                var choice = promoteTo ?? PieceType.Queen;
+                string symbol = piece.Color == "White" ? "♕" : "♛";
+                switch (choice)
+                {
+                    case PieceType.Queen:
+                        ChessBoard[destRow, destCol] = new ChessPiece(PieceType.Queen, piece.Color, symbol);
+                        break;
+                    case PieceType.Rook:
+                        ChessBoard[destRow, destCol] = new ChessPiece(PieceType.Rook, piece.Color, piece.Color == "White" ? "♖" : "♜");
+                        break;
+                    case PieceType.Bishop:
+                        ChessBoard[destRow, destCol] = new ChessPiece(PieceType.Bishop, piece.Color, piece.Color == "White" ? "♗" : "♝");
+                        break;
+                    case PieceType.Knight:
+                        ChessBoard[destRow, destCol] = new ChessPiece(PieceType.Knight, piece.Color, piece.Color == "White" ? "♘" : "♞");
+                        break;
+                    default:
+                        ChessBoard[destRow, destCol] = new ChessPiece(PieceType.Queen, piece.Color, symbol);
+                        break;
+                }
+            }
+        }
+    }
+
+    // Basic helpers to support AI search (make move and undo)
+    // Returns captured piece so caller can undo
+    private ChessPiece? MakeMoveAndReturnCaptured(int srcRow, int srcCol, int destRow, int destCol, PieceType? promoteTo =
+    null)
+    {
+        var moving = ChessBoard[srcRow, srcCol];
+        var captured = ChessBoard[destRow, destCol];
+
+        // Keep copy of original moving piece so undo can restore (in case of promotion)
+        ChessPiece? movedOriginal = moving == null ? null : new ChessPiece(moving.Type, moving.Color, moving.Symbol);
+
+        ChessBoard[destRow, destCol] = moving;
+        ChessBoard[srcRow, srcCol] = null;
+
+        // handle promotion
+        if (moving != null && moving.Type == PieceType.Pawn)
+        {
+            if ((moving.Color == "White" && destRow == 0) || (moving.Color == "Black" && destRow == 7))
+            {
+                var promote = promoteTo ?? PieceType.Queen;
+                ChessBoard[destRow, destCol] = new ChessPiece(promote, moving.Color, GetSymbolFor(promote, moving.Color));
+            }
+        }
+
+        return captured;
+    }
+
+    private void UndoMove(int srcRow, int srcCol, int destRow, int destCol, ChessPiece? captured, ChessPiece? movedOriginal)
+    {
+        // movedOriginal is a snapshot of the original piece prior to moving (null if none)
+        ChessBoard[srcRow, srcCol] = movedOriginal;
+        ChessBoard[destRow, destCol] = captured;
+    }
+
+    // A minimal evaluator for AI: simple material score (White positive, Black negative)
+    private int EvaluateBoard()
+    {
+        int score = 0;
+        for (int r = 0; r < 8; r++)
+        {
+            for (int c = 0; c < 8; c++)
+            {
+                var p = ChessBoard[r, c];
+                if (p == null) continue;
+                int val = p.Type switch
+                {
+                    PieceType.Pawn => 100,
+                    PieceType.Knight => 320,
+                    PieceType.Bishop => 330,
+                    PieceType.Rook => 500,
+                    PieceType.Queen => 900,
+                    PieceType.King => 20000,
+                    _ => 0
+                };
+                score += (p.Color == "White" ? val : -val);
+            }
+        }
+        return score;
+    }
+
+    // Return best move for color as tuple (sr, sc, tr, tc)
+    private (int, int, int, int)? GetBestMoveForColor(string color, int depth)
+    {
+        var moves = GetAllLegalMoves(color);
+        if (!moves.Any()) return null;
+
+        int bestScore = color == "White" ? int.MinValue : int.MaxValue;
+        (int, int, int, int)? bestMove = null;
+
+        foreach (var move in moves)
+        {
+            var (sr, sc, tr, tc) = move;
+            var movedOriginal = ChessBoard[sr, sc] == null ? null : new ChessPiece(ChessBoard[sr, sc]!.Type, ChessBoard[sr,
+            sc]!.Color, ChessBoard[sr, sc]!.Symbol);
+            var captured = MakeMoveAndReturnCaptured(sr, sc, tr, tc, promoteTo: (movedOriginal?.Type == PieceType.Pawn &&
+            ((movedOriginal.Color == "White" && tr == 0) || (movedOriginal.Color == "Black" && tr == 7))) ? PieceType.Queen :
+            (PieceType?)null);
+
+            int score;
+            if (depth - 1 <= 0)
+            {
+                score = EvaluateBoard();
+            }
+            else
+            {
+                // Next level: opponent to move (White maximizing, Black minimizing)
+                bool nextIsWhite = color == "White" ? false : true;
+                score = Minimax(depth - 1, int.MinValue, int.MaxValue, nextIsWhite);
+            }
+
+            UndoMove(sr, sc, tr, tc, captured, movedOriginal);
+
+            if (color == "White")
+            {
+                if (score > bestScore) { bestScore = score; bestMove = move; }
+            }
+            else
+            {
+                if (score < bestScore) { bestScore = score; bestMove = move; }
+            }
+        }
+
+        return bestMove;
+    }
+
+    // Minimax with alpha-beta. maximizingPlayer true => White to move (maximize), false => Black to move (minimize)
+    private int Minimax(int depth, int alpha, int beta, bool maximizingPlayer)
+    {
+        string toMove = maximizingPlayer ? "White" : "Black";
+        var allMoves = GetAllLegalMoves(toMove);
+        if (!allMoves.Any())
+        {
+            if (IsInCheck(toMove))
+            {
+                // Checkmate: bad for side to move
+                return maximizingPlayer ? -100000 : 100000;
+            }
+            else
+            {
+                // Stalemate: neutral
+                return 0;
+            }
+        }
+
+        if (depth == 0)
+        {
+            return EvaluateBoard();
+        }
+
+        if (maximizingPlayer)
+        {
+            int maxEval = int.MinValue;
+            foreach (var move in allMoves)
+            {
+                var (sr, sc, tr, tc) = move;
+                var movedOriginal = ChessBoard[sr, sc] == null ? null : new ChessPiece(ChessBoard[sr, sc]!.Type, ChessBoard[sr,
+                sc]!.Color, ChessBoard[sr, sc]!.Symbol);
+                var captured = MakeMoveAndReturnCaptured(sr, sc, tr, tc, promoteTo: (movedOriginal?.Type == PieceType.Pawn &&
+                ((movedOriginal.Color == "White" && tr == 0) || (movedOriginal.Color == "Black" && tr == 7))) ? PieceType.Queen :
+                (PieceType?)null);
+
+                int eval = Minimax(depth - 1, alpha, beta, false);
+
+                UndoMove(sr, sc, tr, tc, captured, movedOriginal);
+
+                if (eval > maxEval) maxEval = eval;
+                if (eval > alpha) alpha = eval;
+                if (beta <= alpha) break;
+            }
+            return maxEval;
+        }
+        else
+        {
+            int minEval = int.MaxValue;
+            foreach (var move in allMoves)
+            {
+                var (sr, sc, tr, tc) = move;
+                var movedOriginal = ChessBoard[sr, sc] == null ? null : new ChessPiece(ChessBoard[sr, sc]!.Type, ChessBoard[sr,
+                sc]!.Color, ChessBoard[sr, sc]!.Symbol);
+                var captured = MakeMoveAndReturnCaptured(sr, sc, tr, tc, promoteTo: (movedOriginal?.Type == PieceType.Pawn &&
+                ((movedOriginal.Color == "White" && tr == 0) || (movedOriginal.Color == "Black" && tr == 7))) ? PieceType.Queen :
+                (PieceType?)null);
+
+                int eval = Minimax(depth - 1, alpha, beta, true);
+
+                UndoMove(sr, sc, tr, tc, captured, movedOriginal);
+
+                if (eval < minEval) minEval = eval;
+                if (eval < beta) beta = eval;
+                if (beta <= alpha) break;
+            }
+            return minEval;
+        }
+    }
+
+    // Generate all legal moves for color (excluding those leaving king in check)
+    private List<(int, int, int, int)> GetAllLegalMoves(string color)
+    {
+        var moves = new List<(int, int, int, int)>();
+        for (int r = 0; r < 8; r++)
+        {
+            for (int c = 0; c < 8; c++)
+            {
+                var p = ChessBoard[r, c];
+                if (p == null || p.Color != color) continue;
+
+                for (int tr = 0; tr < 8; tr++)
+                {
+                    for (int tc = 0; tc < 8; tc++)
+                    {
+                        if (r == tr && c == tc) continue;
+                        if (!IsValidMove(r, c, tr, tc)) continue;
+                        if (WouldBeInCheckAfterMove(r, c, tr, tc, color)) continue;
+                        moves.Add((r, c, tr, tc));
+                    }
+                }
+            }
+        }
+        return moves;
+    }
+
+    // --- Move validation, path checking, check detection (adapted from your base) ---
+
+    bool IsValidMove(int srcRow, int srcCol, int destRow, int destCol)
+    {
+        var piece = ChessBoard[srcRow, srcCol];
+        if (piece == null) return false;
+        if (piece.Color == ChessBoard[destRow, destCol]?.Color) return false; // Cannot capture own piece
+
+        int dr = destRow - srcRow;
+        int dc = destCol - srcCol;
+
+        switch (piece.Type)
+        {
+            case PieceType.Pawn:
+                return IsValidPawnMove(piece.Color, srcRow, srcCol, destRow, destCol);
+
+            case PieceType.Rook:
+                if (dr != 0 && dc != 0) return false;
+                return IsPathClear(srcRow, srcCol, destRow, destCol);
+
+            case PieceType.Bishop:
+                if (Math.Abs(dr) != Math.Abs(dc)) return false;
+                return IsPathClear(srcRow, srcCol, destRow, destCol);
+
+            case PieceType.Queen:
+                if (dr != 0 && dc != 0 && Math.Abs(dr) != Math.Abs(dc)) return false;
+                return IsPathClear(srcRow, srcCol, destRow, destCol);
+
+            case PieceType.Knight:
+                return (Math.Abs(dr) == 2 && Math.Abs(dc) == 1) || (Math.Abs(dr) == 1 && Math.Abs(dc) == 2);
+
+            case PieceType.King:
+                return Math.Abs(dr) <= 1 && Math.Abs(dc) <= 1;
+
+            default: return false;
+        }
+    }
+
+    bool IsValidPawnMove(string color, int srcRow, int srcCol, int destRow, int destCol)
+    {
+        int direction = color == "White" ? -1 : 1;
+        int startRow = color == "White" ? 6 : 1;
+
+        // Forward move
+        if (srcCol == destCol)
+        {
+            // One step
+            if (destRow - srcRow == direction && ChessBoard[destRow, destCol] == null)
+                return true;
+
+            // Two steps from starting row
+            if (srcRow == startRow && destRow - srcRow == 2 * direction && ChessBoard[srcRow + direction, srcCol] == null &&
+            ChessBoard[destRow, destCol] == null)
+                return true;
+        }
+        else if (Math.Abs(destCol - srcCol) == 1 && destRow - srcRow == direction)
+        {
+            // Capture
+            var target = ChessBoard[destRow, destCol];
+            if (target != null && target.Color != color)
+                return true;
+
+            // NOTE: en passant not implemented
+        }
+
+        return false;
+    }
+
+    bool IsPathClear(int srcRow, int srcCol, int destRow, int destCol)
+    {
+        int dr = Math.Sign(destRow - srcRow);
+        int dc = Math.Sign(destCol - srcCol);
+
+        int r = srcRow + dr;
+        int c = srcCol + dc;
+
+        while (r != destRow || c != destCol)
+        {
+            if (ChessBoard[r, c] != null) return false;
+            if (r != destRow) r += dr;
+            if (c != destCol) c += dc;
+        }
+
+        return true;
+    }
+
+    bool IsKingAlive(string color)
+    {
+        return ChessBoard.Cast<ChessPiece?>().Any(p => p != null && p.Color == color && p.Type == PieceType.King);
+    }
+
+    // Is the given color's king under attack?
+    bool IsInCheck(string color)
+    {
+                // Find king
+        (int r, int c)? kingPos = null;
+
+        for (int r = 0; r < 8; r++)
+        {
+            for (int c = 0; c < 8; c++)
+            {
+                var piece = ChessBoard[r, c];
+                if (piece != null && piece.Color == color && piece.Type == PieceType.King)
+                {
+                    kingPos = (r, c);
+                    break;
+                }
+            }
+            if (kingPos.HasValue)
+                break;
+        }
+
+        if (!kingPos.HasValue)
+            return false; // king missing (should be handled elsewhere)
+
+        var (kr, kc) = kingPos.Value;
+
+
+        // If any opposing piece has a valid move to the king square, we're in check.
+        string opponent = color == "White" ? "Black" : "White";
+        for (int r = 0; r < 8; r++)
+        {
+            for (int c = 0; c < 8; c++)
+            {
+                var p = ChessBoard[r, c];
+                if (p != null && p.Color == opponent)
+                {
+                    if (IsValidMove(r, c, kingPos.Value.r, kingPos.Value.c))
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Check whether performing src->dest would leave 'color' in check
+    bool WouldBeInCheckAfterMove(int srcRow, int srcCol, int destRow, int destCol, string color)
+    {
+        var srcPiece = ChessBoard[srcRow, srcCol];
+        var destPiece = ChessBoard[destRow, destCol];
+
+        // perform move
+        ChessBoard[destRow, destCol] = srcPiece;
+        ChessBoard[srcRow, srcCol] = null;
+
+        // if pawn promotion is possible for this simulated move, assume promotion to queen for the purpose of check detection
+        if (srcPiece != null && srcPiece.Type == PieceType.Pawn)
+        {
+            if ((srcPiece.Color == "White" && destRow == 0) || (srcPiece.Color == "Black" && destRow == 7))
+            {
+                ChessBoard[destRow, destCol] = new ChessPiece(PieceType.Queen, srcPiece.Color, srcPiece.Color == "White" ? "♕" : "♛");
+            }
+        }
+
+        bool inCheck = IsInCheck(color);
+
+        // undo move
+        ChessBoard[srcRow, srcCol] = srcPiece;
+        ChessBoard[destRow, destCol] = destPiece;
+
+        return inCheck;
+    }
+
+    // Returns true if the given side has any legal move (i.e., a valid move that does not leave king in check)
+    bool HasAnyLegalMoves(string color)
+    {
+        for (int r = 0; r < 8; r++)
+        {
+            for (int c = 0; c < 8; c++)
+            {
+                var p = ChessBoard[r, c];
+                if (p == null || p.Color != color) continue;
+
+                for (int tr = 0; tr < 8; tr++)
+                {
+                    for (int tc = 0; tc < 8; tc++)
+                    {
+                        if (r == tr && c == tc) continue;
+                        if (!IsValidMove(r, c, tr, tc)) continue;
+                        if (WouldBeInCheckAfterMove(r, c, tr, tc, color)) continue;
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    string GetSquareColor(int row, int col) => (row + col) % 2 == 0 ? "light" : "dark";
+    bool IsSelected(int row, int col) => SelectedSquare != null && SelectedSquare.Value.row == row &&
+    SelectedSquare.Value.col == col;
+
+    // small helper for symbol mapping
+    private string GetSymbolFor(PieceType pt, string color)
+    {
+        return (pt, color) switch
+        {
+            (PieceType.King, "White") => "♔",
+            (PieceType.King, "Black") => "♚",
+            (PieceType.Queen, "White") => "♕",
+            (PieceType.Queen, "Black") => "♛",
+            (PieceType.Rook, "White") => "♖",
+            (PieceType.Rook, "Black") => "♜",
+            (PieceType.Bishop, "White") => "♗",
+            (PieceType.Bishop, "Black") => "♝",
+            (PieceType.Knight, "White") => "♘",
+            (PieceType.Knight, "Black") => "♞",
+            (PieceType.Pawn, "White") => "♙",
+            (PieceType.Pawn, "Black") => "♟",
+            _ => "?"
+        };
+    }
+
+    // Tiny convenience classes
+    public enum PieceType { King, Queen, Rook, Bishop, Knight, Pawn }
+
+    public class ChessPiece
+    {
+        public PieceType Type { get; set; }
+        public string Color { get; set; }
+        public string Symbol { get; set; }
+
+        public ChessPiece(PieceType type, string color, string symbol)
+        {
+            Type = type;
+            Color = color;
+            Symbol = symbol;
+        }
+    }
+}

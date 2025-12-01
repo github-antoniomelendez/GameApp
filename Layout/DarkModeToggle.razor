@@ -1,0 +1,43 @@
+@inject IJSRuntime JS
+
+@inject IJSRuntime JS
+
+<button class="dark-toggle" @onclick="Toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+    <svg class="sunglasses" viewBox="0 0 64 32" width="44" height="22" role="img" aria-hidden="true">
+        <!-- left lens -->
+        <rect x="2"  y="8" width="22" height="14" rx="3"></rect>
+        <!-- bridge -->
+        <rect x="26" y="12" width="12" height="4" rx="2"></rect>
+        <!-- right lens -->
+        <rect x="40" y="8" width="22" height="14" rx="3"></rect>
+        <!-- little highlights -->
+        <path class="shine" d="M6 10 q2 -2 4 0" stroke-width="1.1" fill="none" stroke-linecap="round"></path>
+        <path class="shine" d="M44 10 q2 -2 4 0" stroke-width="1.1" fill="none" stroke-linecap="round"></path>
+    </svg>
+</button>
+
+@code {
+    private bool _isDark;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // read saved preference and make sure body class is correct
+            _isDark = await JS.InvokeAsync<bool>("gameApp.getDarkMode");
+            await JS.InvokeVoidAsync("gameApp.applyDarkClass", _isDark);
+            StateHasChanged();
+        }
+    }
+
+    private async Task Toggle()
+    {
+        _isDark = !_isDark;
+        await JS.InvokeVoidAsync("gameApp.setDarkMode", _isDark);
+        // no further C# DOM manipulation required
+    }
+}
+
+
+
+

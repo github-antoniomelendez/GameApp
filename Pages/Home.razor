@@ -1,0 +1,30 @@
+﻿@page "/"
+ 
+ <PageTitle>Home</PageTitle>
+ 
+ <div class="d-flex flex-column align-items-center justify-content-center text-center p-5"
+ style="min-height: 70vh; background: linear-gradient(135deg, #4e54c8, #8f94fb); color: white; border-radius: 20px;">
+ 
+ <h1 class="display-3 fw-bold mb-3">
+ Welcome to <span style="color:#ffd369;">GameApp</span> 🎮
+ </h1>
+ 
+ <p class="lead mb-4" style="max-width: 600px;">
+ Enjoy fun, interactive games built with Blazor!
+ Select a game from the menu and dive in.
+ </p>
+ 
+ <a class="btn btn-light btn-lg mt-2 shadow" style="border-radius: 30px; font-weight: 600;" href="/tic-tac-toe">
+ Start Playing →
+ </a>
+ </div>
+
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="main">
+        @Body
+    </div>
+
+    <Footer />
+</div>

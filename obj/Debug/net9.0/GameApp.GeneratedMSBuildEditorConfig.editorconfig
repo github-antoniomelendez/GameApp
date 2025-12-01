@@ -1,0 +1,73 @@
+is_global = true
+build_property.EnableAotAnalyzer = 
+build_property.EnableSingleFileAnalyzer = 
+build_property.EnableTrimAnalyzer = false
+build_property.IncludeAllContentForSelfExtract = 
+build_property.TargetFramework = net9.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = false
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = browser
+build_property.RootNamespace = GameApp
+build_property.RootNamespace = GameApp
+build_property.ProjectDir = /Users/antoniomelendez/GameApp/
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = false
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = /Users/antoniomelendez/GameApp
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 9.0
+build_property.EnableCodeStyleSeverity = 
+
+[/Users/antoniomelendez/GameApp/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Layout/DarkModeToggle.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0L0RhcmtNb2RlVG9nZ2xlLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Layout/Footer.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0L0Zvb3Rlci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Pages/Chess.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ2hlc3MucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Pages/ConnectFour.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvQ29ubmVjdEZvdXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Pages/Hangman.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvSGFuZ21hbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Pages/Home.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvSG9tZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Pages/MemoryGame.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvTWVtb3J5R2FtZS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Pages/TicTacToe.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXMvVGljVGFjVG9lLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/Users/antoniomelendez/GameApp/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0L01haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-b57ujpy728
+
+[/Users/antoniomelendez/GameApp/Layout/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = TGF5b3V0L05hdk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-w00tudwnf1

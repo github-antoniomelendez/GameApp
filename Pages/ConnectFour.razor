@@ -1,0 +1,388 @@
+@page "/connect-four"
+
+<h3 class="text-center mt-3">Connect Four</h3>
+
+<div class="d-flex justify-content-center align-items-center mb-3 gap-3">
+    <div>
+        <label for="difficulty" class="me-2">Difficulty:</label>
+        <select id="difficulty" @bind="difficulty" class="form-select d-inline w-auto">
+            <option>Easy</option>
+            <option>Medium</option>
+            <option>Hard</option>
+        </select>
+    </div>
+
+    <div class="connect-controls">
+        <button class="btn btn-primary ms-3" @onclick="ResetGame">Reset Game</button>
+        <span class="ms-2">@statusText</span>
+    </div>
+</div>
+
+<div class="text-center">
+<div class="connect-board" role="grid" aria-label="Connect Four board">
+    @for (int r = 0; r < Rows; r++)
+    {
+        <div class="connect-row" role="row">
+            @for (int c = 0; c < Cols; c++)
+            {
+                var col = c; // capture for lambda
+                var cell = board[r * Cols + c];
+                bool isWinningCell = winningCells.Contains(r * Cols + c);
+                <button class="connect-cell @(isWinningCell ? "winner-cell" : "")" data-player="@cell" title="Column @c"
+                    @onclick="(() => DropInColumn(col))" disabled="@(!string.IsNullOrEmpty(winner) || IsColumnFull(col))">
+                    <span
+                        class="disc @(string.IsNullOrEmpty(cell) ? "" : "fade-in") @(cell == "X" ? "x-symbol" : cell == "O" ? "o-symbol" : "")">
+                        @(cell)
+                    </span>
+                </button>
+
+            }
+        </div>
+    }
+</div>
+</div>
+
+@if (!string.IsNullOrEmpty(winner))
+{
+    <div class="text-center mt-3">
+        <h4 class="fw-bold">@winner</h4>
+    </div>
+}
+
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="main">
+        @Body
+    </div>
+
+    <Footer />
+</div>
+
+@code {
+    // Board dimensions
+    private const int Rows = 6;
+    private const int Cols = 7;
+    private string[] board = new string[Rows * Cols]; // row-major: index = r*Cols + c
+    private bool playerTurn = true; // player always X
+    private string? winner;
+    private List<int> winningCells = new();
+    private string difficulty = "Easy";
+    private Random rng = new();
+    private string statusText => string.IsNullOrEmpty(winner) ? (playerTurn ? "Your turn (X)" : "Computer thinking (O)...")
+    : $"{winner}";
+
+    protected override void OnInitialized() => ResetGame();
+
+    // Called when user clicks a column (by clicking any cell in that column)
+    private async Task DropInColumn(int col)
+    {
+        if (!playerTurn || !string.IsNullOrEmpty(winner)) return;
+
+        int row = GetAvailableRow(col);
+        if (row == -1) return;
+
+        PlacePiece(row, col, "X");
+        playerTurn = false;
+        CheckWinnerAndMaybeEnd();
+
+        await InvokeAsync(StateHasChanged);
+
+        if (string.IsNullOrEmpty(winner))
+        {
+            // AI thinking delay
+            await Task.Delay(600);
+            AITurn();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void AITurn()
+    {
+        var validCols = Enumerable.Range(0, Cols).Where(c => !IsColumnFull(c)).ToList();
+        if (!validCols.Any()) return;
+
+        int chosen = difficulty switch
+        {
+            "Easy" => EasyAI(validCols),
+            "Medium" => MediumAI(validCols),
+            "Hard" => HardAI(),
+            _ => EasyAI(validCols)
+        };
+
+        int r = GetAvailableRow(chosen);
+        if (r != -1)
+        {
+            PlacePiece(r, chosen, "O");
+            playerTurn = true;
+            CheckWinnerAndMaybeEnd();
+        }
+    }
+
+    private int EasyAI(List<int> validCols) => validCols[rng.Next(validCols.Count)];
+
+    private int MediumAI(List<int> validCols)
+    {
+        // 1) try to win
+        foreach (var c in validCols)
+        {
+            int r = GetAvailableRow(c);
+            board[r * Cols + c] = "O";
+            if (HasWinnerAtBoard(board, r, c, "O", out _))
+            {
+                board[r * Cols + c] = "";
+                return c;
+            }
+            board[r * Cols + c] = "";
+        }
+
+        // 2) try to block player
+        foreach (var c in validCols)
+        {
+            int r = GetAvailableRow(c);
+            board[r * Cols + c] = "X";
+            if (HasWinnerAtBoard(board, r, c, "X", out _))
+            {
+                board[r * Cols + c] = "";
+                return c;
+            }
+            board[r * Cols + c] = "";
+        }
+
+        // 3) else random
+        return EasyAI(validCols);
+    }
+
+    private int HardAI()
+    {
+        // Minimax with alpha-beta, limited depth for performance
+        int bestScore = int.MinValue;
+        int bestCol = -1;
+        int depthLimit = 6; // tweak for speed/strength tradeoff
+
+        for (int c = 0; c < Cols; c++)
+        {
+            int r = GetAvailableRow(c);
+            if (r == -1) continue;
+            board[r * Cols + c] = "O";
+            int score = MiniMax(board, depthLimit - 1, false, int.MinValue, int.MaxValue);
+            board[r * Cols + c] = "";
+            if (score > bestScore)
+            {
+                bestScore = score;
+                bestCol = c;
+            }
+        }
+
+        return bestCol == -1 ? EasyAI(Enumerable.Range(0, Cols).Where(c => !IsColumnFull(c)).ToList()) : bestCol;
+    }
+
+    // Minimax with alpha-beta pruning and heuristic evaluation
+    private int MiniMax(string[] boardState, int depth, bool maximizing, int alpha, int beta)
+    {
+        // Terminal checks
+        if (HasAnyWinner(boardState, out var winCells, out var winnerPlayer))
+        {
+            if (winnerPlayer == "O") return 100000 + depth; // prefer quicker wins
+            if (winnerPlayer == "X") return -100000 - depth; // avoid losing
+        }
+        if (depth == 0 || boardState.All(s => !string.IsNullOrEmpty(s))) return EvaluateBoard(boardState);
+
+        if (maximizing)
+        {
+            int maxEval = int.MinValue;
+            for (int c = 0; c < Cols; c++)
+            {
+                int r = GetAvailableRowForBoard(boardState, c);
+                if (r == -1) continue;
+                boardState[r * Cols + c] = "O";
+                int eval = MiniMax(boardState, depth - 1, false, alpha, beta);
+                boardState[r * Cols + c] = "";
+                maxEval = Math.Max(maxEval, eval);
+                alpha = Math.Max(alpha, eval);
+                if (beta <= alpha) break;
+            }
+            return maxEval;
+        }
+        else
+        {
+            int minEval = int.MaxValue;
+            for (int c = 0; c < Cols; c++)
+            {
+                int r = GetAvailableRowForBoard(boardState, c);
+                if (r == -1) continue;
+                boardState[r * Cols + c] = "X";
+                int eval = MiniMax(boardState, depth - 1, true, alpha, beta);
+                boardState[r * Cols + c] = "";
+                minEval = Math.Min(minEval, eval);
+                beta = Math.Min(beta, eval);
+                if (beta <= alpha) break;
+            }
+            return minEval;
+        }
+    }
+
+    // Simple heuristic: score runs of 2/3/4 for O positive, for X negative
+    private int EvaluateBoard(string[] state)
+    {
+        int score = 0;
+        // Evaluate all windows of length 4 horizontally, vertically, diag
+        IEnumerable<int[]> windows = GetAllWindows();
+        foreach (var w in windows)
+        {
+            int oCount = w.Count(i => state[i] == "O");
+            int xCount = w.Count(i => state[i] == "X");
+            if (oCount > 0 && xCount == 0)
+            {
+                score += oCount == 4 ? 10000 : (oCount == 3 ? 50 : (oCount == 2 ? 10 : 1));
+            }
+            else if (xCount > 0 && oCount == 0)
+            {
+                score -= xCount == 4 ? 10000 : (xCount == 3 ? 80 : (xCount == 2 ? 15 : 1));
+            }
+        }
+        return score;
+    }
+
+    // Create all windows (indexes of length 4) to evaluate
+    private IEnumerable<int[]> GetAllWindows()
+    {
+        var list = new List<int[]>();
+        // horizontal
+        for (int r = 0; r < Rows; r++)
+            for (int c = 0; c <= Cols - 4; c++)
+                list.Add(new[] { r * Cols + c, r * Cols + c + 1, r * Cols + c + 2, r * Cols + c + 3 });
+        // vertical
+        for (int c = 0; c < Cols; c++)
+            for (int r = 0; r <= Rows - 4; r++)
+                list.Add(new[] { r * Cols + c, (r + 1) * Cols + c, (r + 2) * Cols + c, (r + 3) * Cols + c });
+        // diag down-right
+        for (int r = 0; r <= Rows - 4; r++)
+            for (int c = 0; c <= Cols - 4; c++)
+                list.Add(new[] { r * Cols + c, (r + 1) * Cols + c + 1, (r + 2) * Cols + c + 2, (r + 3) * Cols + c + 3 });
+        // diag up-right
+        for (int r = 3; r < Rows; r++)
+            for (int c = 0; c <= Cols - 4; c++)
+                list.Add(new[] { r * Cols + c, (r - 1) * Cols + c + 1, (r - 2) * Cols + c + 2, (r - 3) * Cols + c + 3 });
+        return list;
+    }
+
+    private void PlacePiece(int row, int col, string player)
+    {
+        board[row * Cols + col] = player;
+        // no StateHasChanged here; caller will update
+    }
+
+    private int GetAvailableRow(int col)
+    {
+        for (int r = Rows - 1; r >= 0; r--)
+        {
+            if (string.IsNullOrEmpty(board[r * Cols + col])) return r;
+        }
+        return -1;
+    }
+
+    private int GetAvailableRowForBoard(string[] state, int col)
+    {
+        for (int r = Rows - 1; r >= 0; r--)
+            if (string.IsNullOrEmpty(state[r * Cols + col])) return r;
+        return -1;
+    }
+
+    private bool IsColumnFull(int col) => GetAvailableRow(col) == -1;
+
+    private void CheckWinnerAndMaybeEnd()
+    {
+        if (HasAnyWinner(board, out var winCells, out var winPlayer))
+        {
+            winningCells = winCells.ToList();
+            winner = $"{winPlayer} Wins!";
+        }
+        else if (board.All(s => !string.IsNullOrEmpty(s)))
+        {
+            winner = "It's a Draw!";
+        }
+    }
+
+    // Checks full board for a winner quickly after a recent move (r,c)
+    private bool HasWinnerAtBoard(string[] state, int r, int c, string player, out int[] cells)
+    {
+        // after placing at r,c, check around for 4 in a row quickly
+        cells = Array.Empty<int>();
+        // horizontal
+        for (int start = Math.Max(0, c - 3); start <= Math.Min(c, Cols - 4); start++)
+        {
+            var w = new int[] { r * Cols + start, r * Cols + start + 1, r * Cols + start + 2, r * Cols + start + 3 };
+            if (w.All(i => state[i] == player)) { cells = w; return true; }
+        }
+        // vertical
+        for (int start = Math.Max(0, r - 3); start <= Math.Min(r, Rows - 4); start++)
+        {
+            var w = new int[] { start * Cols + c, (start + 1) * Cols + c, (start + 2) * Cols + c, (start + 3) * Cols + c };
+            if (w.All(i => state[i] == player)) { cells = w; return true; }
+        }
+        // diag down-right
+        for (int offset = -3; offset <= 0; offset++)
+        {
+            int sr = r + offset, sc = c + offset;
+            if (sr < 0 || sc < 0 || sr + 3 >= Rows || sc + 3 >= Cols) continue;
+            var w = new[] { sr * Cols + sc, (sr + 1) * Cols + sc + 1, (sr + 2) * Cols + sc + 2, (sr + 3) * Cols + sc + 3 };
+            if (w.All(i => state[i] == player)) { cells = w; return true; }
+        }
+        // diag up-right
+        for (int offset = -3; offset <= 0; offset++)
+        {
+            int sr = r - offset, sc = c + offset;
+            // sr is starting row going down-left; convert carefully
+            int startR = r - offset;
+            int startC = c + offset;
+            // better to compute sliding windows:
+            for (int s = 0; s <= 3; s++) { /* no-op: handled by windows approach below if needed */ }
+        }
+        // fallback: full scan (safe)
+        return HasAnyWinner(state, out _, out _);
+    }
+
+    private bool HasAnyWinner(string[] state, out int[] winCells, out string? winPlayer)
+    {
+        int[][] wins =
+        {
+// horizontal
+new[] {0,1,2,3}, new[] {1,2,3,4}, new[] {2,3,4,5}, new[] {3,4,5,6},
+new[] {7,8,9,10}, new[] {8,9,10,11}, new[] {9,10,11,12}, new[] {10,11,12,13},
+// ... rather than listing all, generate programmatically below
+};
+
+        // We'll generate all windows instead for reliability:
+        foreach (var w in GetAllWindows())
+        {
+            var arr = w;
+            var values = arr.Select(i => state[i]).ToArray();
+            if (!values.Any(v => string.IsNullOrEmpty(v)) && values.All(v => v == values[0]))
+            {
+                winCells = arr;
+                winPlayer = values[0];
+                return true;
+            }
+        }
+
+        winCells = Array.Empty<int>();
+        winPlayer = null;
+        return false;
+    }
+
+    // check winner after placing piece: simpler full-scan helper
+    private bool HasAnyWinner(string[] state)
+    {
+        return HasAnyWinner(state, out _, out _);
+    }
+
+    private void ResetGame()
+    {
+        for (int i = 0; i < board.Length; i++) board[i] = string.Empty;
+        playerTurn = true;
+        winner = null;
+        winningCells.Clear();
+        InvokeAsync(StateHasChanged);
+    }
+}

@@ -1,0 +1,224 @@
+@page "/tic-tac-toe"
+
+<h3 class="text-center mt-3">Tic-Tac-Toe</h3>
+
+<div class="text-center mb-3">
+    <label for="difficulty">Difficulty: </label>
+    <select id="difficulty" @bind="difficulty" class="form-select d-inline w-auto ms-2">
+        <option>Easy</option>
+        <option>Medium</option>
+        <option>Hard</option>
+    </select>
+</div>
+
+<div class="tic-tac-toe-board">
+    @for (int i = 0; i < 9; i++)
+    {
+        var idx = i;
+        <button class="cell @(winningCombo.Contains(idx) ? "winner-cell" : "")"
+                disabled="@( !string.IsNullOrEmpty(board[idx]) || !string.IsNullOrEmpty(winner) )"
+                @onclick="(() => MakeMove(idx))">
+            <span
+                class="symbol @(string.IsNullOrEmpty(board[idx]) ? "" : "fade-in") @(board[idx] == "X" ? "x-symbol" : board[idx] == "O" ? "o-symbol" : "")">
+                @board[idx]
+            </span>
+
+        </button>
+    }
+</div>
+
+<div class="text-center mt-3">
+    @if (string.IsNullOrEmpty(winner))
+    {
+        <h5>@(xTurn ? "X's Turn" : "O's Turn")</h5>
+    }
+    else
+    {
+        <h4>@winner</h4>
+        <button class="btn btn-primary mt-2" @onclick="ResetGame">Play Again</button>
+    }
+</div>
+
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="main">
+        @Body
+    </div>
+
+    <Footer />
+</div>
+
+@code {
+    private string[] board = new string[9];
+    private bool xTurn = true;
+    private string? winner;
+    private string difficulty = "Easy";
+    private List<int> winningCombo = new();
+    private Random rand = new();
+
+    protected override void OnInitialized() => ResetGame();
+
+    private async Task MakeMove(int index)
+    {
+        if (!string.IsNullOrEmpty(board[index]) || !string.IsNullOrEmpty(winner))
+            return;
+
+        board[index] = "X";
+        xTurn = false;
+        CheckWinner();
+        StateHasChanged();
+
+        if (string.IsNullOrEmpty(winner))
+        {
+            await Task.Delay(700); // 🤖 "thinking" delay
+            ComputerMove();
+            CheckWinner();
+        }
+
+        xTurn = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void ComputerMove()
+    {
+        var emptyCells = board
+            .Select((v, i) => new { v, i })
+            .Where(x => string.IsNullOrEmpty(x.v))
+            .Select(x => x.i)
+            .ToList();
+
+        if (emptyCells.Count == 0 || !string.IsNullOrEmpty(winner))
+            return;
+
+        int move = difficulty switch
+        {
+            "Easy" => EasyMove(emptyCells),
+            "Medium" => MediumMove(emptyCells),
+            "Hard" => HardMove(),
+            _ => EasyMove(emptyCells)
+        };
+
+        board[move] = "O";
+    }
+
+    private int EasyMove(List<int> emptyCells) => emptyCells[rand.Next(emptyCells.Count)];
+
+    private int MediumMove(List<int> emptyCells)
+    {
+        // Try to win
+        foreach (var i in emptyCells)
+        {
+            board[i] = "O";
+            if (IsWinningMove("O")) { board[i] = ""; return i; }
+            board[i] = "";
+        }
+
+        // Try to block
+        foreach (var i in emptyCells)
+        {
+            board[i] = "X";
+            if (IsWinningMove("X")) { board[i] = ""; return i; }
+            board[i] = "";
+        }
+
+        // Random otherwise
+        return EasyMove(emptyCells);
+    }
+
+    private int HardMove()
+    {
+        int bestMove = -1;
+        int bestScore = int.MinValue;
+
+        for (int i = 0; i < 9; i++)
+        {
+            if (string.IsNullOrEmpty(board[i]))
+            {
+                board[i] = "O";
+                int score = Minimax(board, false);
+                board[i] = "";
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestMove = i;
+                }
+            }
+        }
+
+        return bestMove;
+    }
+
+    private int Minimax(string[] newBoard, bool isMaximizing)
+    {
+        if (IsWinningMove("O")) return 1;
+        if (IsWinningMove("X")) return -1;
+        if (newBoard.All(cell => !string.IsNullOrEmpty(cell))) return 0;
+
+        int best = isMaximizing ? int.MinValue : int.MaxValue;
+
+        for (int i = 0; i < 9; i++)
+        {
+            if (string.IsNullOrEmpty(newBoard[i]))
+            {
+                newBoard[i] = isMaximizing ? "O" : "X";
+                int score = Minimax(newBoard, !isMaximizing);
+                newBoard[i] = "";
+
+                best = isMaximizing ? Math.Max(score, best) : Math.Min(score, best);
+            }
+        }
+
+        return best;
+    }
+
+    private void CheckWinner()
+    {
+        int[][] wins =
+        {
+            new[] {0,1,2}, new[] {3,4,5}, new[] {6,7,8},
+            new[] {0,3,6}, new[] {1,4,7}, new[] {2,5,8},
+            new[] {0,4,8}, new[] {2,4,6}
+        };
+
+        foreach (var combo in wins)
+        {
+            if (!string.IsNullOrEmpty(board[combo[0]]) &&
+                board[combo[0]] == board[combo[1]] &&
+                board[combo[1]] == board[combo[2]])
+            {
+                winner = $"{board[combo[0]]} Wins!";
+                winningCombo = combo.ToList();
+                return;
+            }
+        }
+
+        if (board.All(cell => !string.IsNullOrEmpty(cell)))
+            winner = "It's a Draw!";
+    }
+
+    private bool IsWinningMove(string player)
+    {
+        int[][] wins =
+        {
+            new[] {0,1,2}, new[] {3,4,5}, new[] {6,7,8},
+            new[] {0,3,6}, new[] {1,4,7}, new[] {2,5,8},
+            new[] {0,4,8}, new[] {2,4,6}
+        };
+
+        return wins.Any(combo =>
+            board[combo[0]] == player &&
+            board[combo[1]] == player &&
+            board[combo[2]] == player);
+    }
+
+    private void ResetGame()
+    {
+        board = new string[9];
+        xTurn = true;
+        winner = null;
+        winningCombo.Clear();
+        StateHasChanged();
+    }
+}
+

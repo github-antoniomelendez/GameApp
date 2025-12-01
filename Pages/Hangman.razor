@@ -1,0 +1,146 @@
+@page "/hangman"
+
+<h3 class="text-center mt-3">Hangman</h3>
+
+<div class="hangman-container">
+    <div class="hangman-figure">
+        <!-- Gallows -->
+        <div class="gallows-vertical"></div>
+        <div class="gallows-horizontal"></div>
+        <div class="gallows-rope"></div>
+
+        <!-- Dynamic Hangman Parts -->
+        @if (wrongGuesses >= 1)
+        {
+            <div class="head">
+                <div class="eye-left"></div>
+                <div class="eye-right"></div>
+                <div class="mouth"></div>
+            </div>
+        }
+        @if (wrongGuesses >= 2)
+        {
+            <div class="rope-around-neck"></div>
+        }
+        @if (wrongGuesses >= 3)
+        {
+            <div class="body"></div>
+        }
+        @if (wrongGuesses >= 4)
+        {
+            <div class="arm left"></div>
+        }
+        @if (wrongGuesses >= 5)
+        {
+            <div class="arm right"></div>
+        }
+        @if (wrongGuesses >= 6)
+        {
+            <div class="leg left"></div>
+        }
+        @if (wrongGuesses >= 7)
+        {
+            <div class="leg right"></div>
+        }
+        @if (wrongGuesses >= 8)
+        {
+            <div class="fire"></div>
+        }
+        @if (wrongGuesses >= 9)
+        {
+            <div class="fire bigger"></div>
+        }
+        @if (wrongGuesses >= 10)
+        {
+            <div class="fire biggest"></div>
+        }
+    </div>
+
+    <!-- Word display -->
+    <div class="word-display">
+        @foreach (var c in displayWord)
+        {
+            <span class="letter">@c</span>
+        }
+    </div>
+
+    <!-- Letters grid -->
+    <div class="letters-grid">
+        @foreach (var letter in alphabet)
+        {
+            <button class="letter-btn" disabled="@(!string.IsNullOrEmpty(winner) || guessedLetters.Contains(letter))"
+                @onclick="() => GuessLetter(letter)">
+                @letter
+            </button>
+        }
+    </div>
+
+    <!-- Winner/loser -->
+    @if (!string.IsNullOrEmpty(winner))
+    {
+        <div class="text-center mt-3">
+            <h4>@winner</h4>
+            <button class="btn btn-primary mt-2" @onclick="ResetGame">Play Again</button>
+        </div>
+    }
+</div>
+
+@inherits LayoutComponentBase
+
+<div class="page">
+    <div class="main">
+        @Body
+    </div>
+
+    <Footer />
+</div>
+
+@code {
+    private string[] words = { "BLAZOR", "HANGMAN", "DEVELOPER", "PROGRAMMING", "COMPONENT", "CLOUD", "COMPUTER" };
+    private string currentWord = "";
+    private string displayWord = "";
+    private HashSet<char> guessedLetters = new();
+    private string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    private int wrongGuesses = 0;
+    private string? winner;
+
+    protected override void OnInitialized() => ResetGame();
+
+    private void GuessLetter(char letter)
+    {
+        if (guessedLetters.Contains(letter) || !string.IsNullOrEmpty(winner))
+            return;
+
+        guessedLetters.Add(letter);
+
+        if (currentWord.Contains(letter))
+        {
+            UpdateDisplayWord();
+            if (!displayWord.Contains("_"))
+                winner = "🎉 You Win!";
+        }
+        else
+        {
+            wrongGuesses++;
+            if (wrongGuesses >= 10)
+                winner = $"💀 You Lose! The word was {currentWord}.";
+        }
+
+        StateHasChanged();
+    }
+
+    private void UpdateDisplayWord()
+    {
+        displayWord = string.Concat(currentWord.Select(c => guessedLetters.Contains(c) ? $"{c} " : "_ "));
+    }
+
+    private void ResetGame()
+    {
+        var random = new Random();
+        currentWord = words[random.Next(words.Length)];
+        guessedLetters.Clear();
+        wrongGuesses = 0;
+        winner = null;
+        UpdateDisplayWord();
+    }
+}
