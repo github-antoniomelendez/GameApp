@@ -979,8 +979,6 @@ code {
 }
 
 .chess-square {
-    width: 60px;
-    height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1218,5 +1216,27 @@ body.dark-mode .dark-toggle .sunglasses {
 @media (max-width: 380px) {
     :root {
         --connect-cell-size: 7.5vw;
+    }
+}
+
+/* === Responsive Chess Board === */
+:root {
+    --chess-size: min(11vw, 60px);
+    /* scales on phones */
+}
+
+.chess-square {
+    width: var(--chess-size);
+    height: var(--chess-size);
+}
+
+.chess-piece {
+    font-size: calc(var(--chess-size) * 0.75);
+}
+
+/* Very small phones */
+@media (max-width: 380px) {
+    :root {
+        --chess-size: 9.5vw;
     }
 }
