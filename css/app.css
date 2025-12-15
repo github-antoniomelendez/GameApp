@@ -1242,7 +1242,7 @@ body.dark-mode .dark-toggle .sunglasses {
 }
 
 /* === Fix Hangman word overflow on small phones === */
-@media (max-width: 420px) {
+@media (max-width: 377px) {
 
     .word-display {
         justify-content: flex-start;
@@ -1250,9 +1250,10 @@ body.dark-mode .dark-toggle .sunglasses {
         padding: 0 10px;
         /* keep inside screen */
         font-size: 22px;
-        letter-spacing: 4px;
+        letter-spacing: 2px;
         max-width: 100%;
         overflow-x: auto;
+        color: red;
         /* last-resort safety */
     }
 
