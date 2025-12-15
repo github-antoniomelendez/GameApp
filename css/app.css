@@ -762,7 +762,6 @@ code {
     margin-bottom: 20px;
     letter-spacing: 3px;
     font-weight: bold;
-    color: dodgerblue;
 }
 
 .letter {
@@ -785,8 +784,9 @@ code {
     border-radius: 10px;
     padding: 10px 0;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 2rem;
     min-height: 42px;
+    min-width: 30px;
     transition: all 0.2s ease;
 }
 
@@ -1260,24 +1260,18 @@ body.dark-mode .dark-toggle .sunglasses {
 }
 
 /* === Fix Hangman word overflow on small phones === */
-@media (max-width: 420px) {
+@media (max-width: 377px) {
 
     .word-display {
         justify-content: flex-start;
-        /* stop centering overflow */
-        padding: 0 10px;
-        /* keep inside screen */
-        font-size: 22px;
-        letter-spacing: 2px;
+        font-size: 20px;
         max-width: 100%;
-        overflow-x: auto;
-        color: red;
-        /* last-resort safety */
+        letter-spacing: 1px;
+        border: red solid 2px;
     }
 
     .letter {
-        width: 22px;
+        width: 13px;
         flex-shrink: 0;
-        /* prevent collapse */
     }
 }
