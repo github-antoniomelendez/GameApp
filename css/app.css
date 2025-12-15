@@ -1241,21 +1241,24 @@ body.dark-mode .dark-toggle .sunglasses {
     }
 }
 
-/* === Responsive Hangman (Small Phones) === */
+/* === Fix Hangman word overflow on small phones === */
 @media (max-width: 420px) {
 
-    .hangman-container {
-        margin-top: 10px;
-    }
-
-    /* Word display */
     .word-display {
+        justify-content: flex-start;
+        /* stop centering overflow */
+        padding: 0 10px;
+        /* keep inside screen */
         font-size: 22px;
-        letter-spacing: 5px;
-        margin-bottom: 14px;
+        letter-spacing: 4px;
+        max-width: 100%;
+        overflow-x: auto;
+        /* last-resort safety */
     }
 
     .letter {
-        width: 24px;
+        width: 22px;
+        flex-shrink: 0;
+        /* prevent collapse */
     }
 }
