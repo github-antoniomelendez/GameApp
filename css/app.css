@@ -760,8 +760,9 @@ code {
     justify-content: center;
     font-size: 28px;
     margin-bottom: 20px;
-    letter-spacing: 8px;
+    letter-spacing: 3px;
     font-weight: bold;
+    color: dodgerblue;
 }
 
 .letter {
@@ -781,9 +782,11 @@ code {
 .letter-btn {
     background-color: #e0e7ff;
     border: none;
-    border-radius: 8px;
-    padding: 8px 0;
-    font-weight: bold;
+    border-radius: 10px;
+    padding: 10px 0;
+    font-weight: 700;
+    font-size: 1rem;
+    min-height: 42px;
     transition: all 0.2s ease;
 }
 
@@ -796,6 +799,21 @@ code {
 .letter-btn:disabled {
     background-color: #ccc;
     color: #666;
+}
+
+/* === Hangman Letter Buttons (Phones) === */
+@media (max-width: 420px) {
+
+    .letters-grid {
+        grid-template-columns: repeat(7, 1fr);
+        max-width: 340px;
+    }
+
+    .letter-btn {
+        font-size: 1.1rem;
+        padding: 12px 0;
+        min-height: 48px;
+    }
 }
 
 /* === Memory Game === */
@@ -1242,7 +1260,7 @@ body.dark-mode .dark-toggle .sunglasses {
 }
 
 /* === Fix Hangman word overflow on small phones === */
-@media (max-width: 377px) {
+@media (max-width: 420px) {
 
     .word-display {
         justify-content: flex-start;
