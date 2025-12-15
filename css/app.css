@@ -1200,28 +1200,6 @@ body.dark-mode .dark-toggle .sunglasses {
     transform: rotate(-8deg);
 }
 
-/* === Responsive Chess Board === */
-:root {
-    --chess-size: min(11vw, 60px);
-    /* scales on phones */
-}
-
-.chess-square {
-    width: var(--chess-size);
-    height: var(--chess-size);
-}
-
-.chess-piece {
-    font-size: calc(var(--chess-size) * 0.75);
-}
-
-/* Very small phones */
-@media (max-width: 380px) {
-    :root {
-        --chess-size: 9.5vw;
-    }
-}
-
 /* === Responsive Connect Four === */
 :root {
     --connect-cell-size: min(9vw, 60px);
