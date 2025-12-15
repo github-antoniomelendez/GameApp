@@ -34,8 +34,6 @@
     }
 
     .chess-square {
-        width: 60px;
-        height: 60px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -96,6 +94,22 @@
         text-align: center;
         font-weight: 600;
     }
+
+    /* === Responsive Chess Board === */
+    :root {
+        --chess-size: min(11vw, 60px);
+        /* scales on phones */
+    }
+
+    .chess-square {
+        width: var(--chess-size);
+        height: var(--chess-size);
+    }
+
+    .chess-piece {
+        font-size: calc(var(--chess-size) * 0.75);
+    }
+
 </style>
 
 <h3 class="text-center mt-3">Chess Game</h3>
