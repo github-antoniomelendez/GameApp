@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "GameApp",
   "resources": {
-    "hash": "sha256-i/Fkq6p3Fzt7RYWIhSRIU/ftmQdL7QIJ85dw+LIcOQg=",
+    "hash": "sha256-hxb1azOnUMw+wy61CBKN4BvQQnPFKdAsDMm+nynvAsg=",
     "fingerprinting": {
       "Microsoft.AspNetCore.Components.owj4lemp0a.wasm": "Microsoft.AspNetCore.Components.wasm",
       "Microsoft.AspNetCore.Components.Web.v53v80jdc0.wasm": "Microsoft.AspNetCore.Components.Web.wasm",
@@ -34,7 +34,7 @@
       "System.Text.Json.0jtr0sfoda.wasm": "System.Text.Json.wasm",
       "System.Text.RegularExpressions.k8ibga7wut.wasm": "System.Text.RegularExpressions.wasm",
       "System.Private.CoreLib.8jnol9m1u2.wasm": "System.Private.CoreLib.wasm",
-      "GameApp.n34kt0xxzi.wasm": "GameApp.wasm",
+      "GameApp.x8snjwd4hu.wasm": "GameApp.wasm",
       "dotnet.js": "dotnet.js",
       "dotnet.native.noby4tlk4d.js": "dotnet.native.js",
       "dotnet.native.qe75a9vfqn.wasm": "dotnet.native.wasm",
@@ -91,7 +91,7 @@
       "System.Text.Encodings.Web.dvi1t3okep.wasm": "sha256-N0H/XiI7CqSVWRBwOAksJI9mQ1UaYSw6kuREMzV/aw8=",
       "System.Text.Json.0jtr0sfoda.wasm": "sha256-xFFFrcKvgZr/OD8aiMiD25hF5Oi+PyNR0+WyUDaBQhk=",
       "System.Text.RegularExpressions.k8ibga7wut.wasm": "sha256-7OYvLuFLvwbax++2u+uoDmoaX8o/Q8wcYJC92eP1YjA=",
-      "GameApp.n34kt0xxzi.wasm": "sha256-w963hU/oNip63AT/hzRoWJX2ikqyecVOWixPxS7gKD0="
+      "GameApp.x8snjwd4hu.wasm": "sha256-wTGCssOvPIwpfMCJI2SD8OuzD0jFnjC7hknE5XcHPRQ="
     }
   },
   "cacheBootResources": true,
