@@ -1,7 +1,7 @@
 {
   "mainAssemblyName": "GameApp",
   "resources": {
-    "hash": "sha256-jkOBKHkWRMlcU/nMlPnR9DjOTUBBbiCUVEH/keBOtrw=",
+    "hash": "sha256-dv8p3yBgBb5iOORxJ3HRkBGI3QN7eWB5xo+keUeTrFM=",
     "fingerprinting": {
       "Microsoft.AspNetCore.Authorization.tnyc7xpluy.wasm": "Microsoft.AspNetCore.Authorization.wasm",
       "Microsoft.AspNetCore.Components.t32damlu4o.wasm": "Microsoft.AspNetCore.Components.wasm",
@@ -201,8 +201,8 @@
       "icudt_CJK.tjcz0u77k5.dat": "icudt_CJK.dat",
       "icudt_EFIGS.tptq2av103.dat": "icudt_EFIGS.dat",
       "icudt_no_CJK.lfu7j35m59.dat": "icudt_no_CJK.dat",
-      "GameApp.h0d8okvlgs.wasm": "GameApp.wasm",
-      "GameApp.sdosav0fu1.pdb": "GameApp.pdb"
+      "GameApp.kah2zauz2u.wasm": "GameApp.wasm",
+      "GameApp.7dpq1sah6a.pdb": "GameApp.pdb"
     },
     "jsModuleNative": {
       "dotnet.native.50iqa8w3ys.js": "sha256-pQdXuxfVeqYHOwd5HUM2ERd7OnXirj9JTF37b6OdTAc="
@@ -412,10 +412,10 @@
       "WindowsBase.361km0836k.wasm": "sha256-FacUCEIJYTnbOWgX/R9QP2QnurqRZwRIkDAH0N9z69s=",
       "mscorlib.qiu3j3msqk.wasm": "sha256-QvztpxTOEw4aMIl7zP3QtsPLNv/IWaK5wq22J4ReGrA=",
       "netstandard.lp03u0xxi4.wasm": "sha256-WVQsxULiAiEbyXLKolS7txnWVT82SsvsuMe4jJ+SqqI=",
-      "GameApp.h0d8okvlgs.wasm": "sha256-H/T/DemPcnCcdQ4/Jp1cNJT9KuBLsfhpI+VBWV4ZGlk="
+      "GameApp.kah2zauz2u.wasm": "sha256-9DDi9sHY6CeyhqIl0oNrst2U/m/kOLRD3tU83alZWg8="
     },
     "pdb": {
-      "GameApp.sdosav0fu1.pdb": "sha256-cFCWWXv47XtjwzW+/qZidg50KhhlBLKHiGnRbi2P/u0="
+      "GameApp.7dpq1sah6a.pdb": "sha256-63OdHLQgHS5JpZRlRfSy/yBjgsM7KL1fIZ6xTHE478U="
     }
   },
   "cacheBootResources": true,
