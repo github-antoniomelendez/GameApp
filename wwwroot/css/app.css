@@ -1240,3 +1240,22 @@ body.dark-mode .dark-toggle .sunglasses {
         --chess-size: 9.5vw;
     }
 }
+
+/* === Responsive Hangman (Small Phones) === */
+@media (max-width: 420px) {
+
+    .hangman-container {
+        margin-top: 10px;
+    }
+
+    /* Word display */
+    .word-display {
+        font-size: 22px;
+        letter-spacing: 5px;
+        margin-bottom: 14px;
+    }
+
+    .letter {
+        width: 24px;
+    }
+}
